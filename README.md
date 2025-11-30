@@ -1,182 +1,126 @@
-Título do Projeto: Sistema Completo de Processamento Concorrente com IPC em Linux
-Disciplina: Programação Concorrente e Sistemas Operacionais
-Professor: Fabio de Sousa Cardoso – UEA
-Alunos: João Paulo Santa Rita Neves 
-        Warley Matheus Nogueira
+# 🧵 Sistema Completo de Processamento Concorrente com IPC em Linux  
+**Disciplina:** Programação Concorrente e Sistemas Operacionais  
+**Professor:** Fabio de Sousa Cardoso – UEA  
+**Alunos:** João Paulo Santa Rita Neves · Warley Matheus Nogueira  
 
-📌 1. Objetivo do Projeto
+---
 
-Este projeto demonstra uma aplicação completa que utiliza todos os principais conceitos de concorrência e IPC (Inter-Process Communication) estudados na disciplina:
+## 🎯 1. Objetivo do Projeto
 
-Processos (fork, exec, wait)
+Este projeto demonstra uma aplicação completa que utiliza os principais conceitos de **concorrência** e **comunicação entre processos (IPC)**:
 
-Threads POSIX (pthread)
+- Processos POSIX (`fork`, `exec`, `wait`)
+- Threads POSIX (`pthread_create`, `pthread_join`)
+- IPC:  
+  - **PIPE nomeado (FIFO)**  
+  - **Memória compartilhada POSIX (`shm_open`, `mmap`)**  
+  - Sinais (opcional)
+- Sincronização:  
+  - **Mutex**  
+  - **Semáforos binários**
 
-IPC: PIPE nomeado (FIFO), memória compartilhada POSIX, sinais
+O sistema simula um pipeline real de processamento de *jobs*, com múltiplas entidades concorrentes trocando mensagens e compartilhando estado.
 
-Sincronização: mutexes, semáforos binários
+---
 
-Arquitetura Produtor → Gerente → Trabalhadores → Monitor
+## 🧱 2. Arquitetura do Sistema
 
-Projeto funcional, executável e modular
-
-O sistema simula um pipeline real de processamento de “jobs” com múltiplas entidades concorrentes e comunicação interprocessual.
-
-🏗️ 2. Arquitetura do Sistema
-                        ┌────────────────────────────────┐
-                        │          PROCESSO MANAGER       │
-                        │  - Recebe jobs do gerador       │
-                        │  - Distribui para workers       │
-                        └───────────────┬─────────────────┘
-                                        │ PIPE
-                                        ▼
-      ┌─────────────────┐         ┌───────────────┐
-      │ PROCESSO        │  FIFO   │ THREAD WORKER │ x N
-      │  GERADOR        │─────────► (pthread)     │
-      │  (produtor)     │         │ - executa job │
-      └─────────────────┘         └──────┬────────┘
-                                         │ Mutex + ...
-                                         │
+```text
+                          ┌──────────────────────────────┐
+                          │        PROCESSO MANAGER       │
+                          │  - Lê jobs do FIFO            │
+                          │  - Enfileira tarefas          │
+                          │  - Cria threads worker        │
+                          └───────────────┬──────────────┘
+                                          │
+                                  FIFO    │
+┌─────────────────────┐                  ▼
+│   PROCESSO          │        ┌───────────────────┐
+│    GENERATOR        │ -----> │ THREAD WORKER (N) │
+│  (produtor de jobs) │        │ - executa job     │
+└─────────────────────┘        │ - atualiza SHM    │
+                               └─────────┬─────────┘
+                                         │ mutex
                                          ▼
-                            Memória Compartilhada (SHM)
-                            total_criados | em_fila | em_execução |
-                            total_concluídos
+                          ┌───────────────────────────────┐
+                          │      MEMÓRIA COMPARTILHADA     │
+                          │ total_criados                 │
+                          │ em_fila                       │
+                          │ em_exec                       │
+                          │ concluidos                    │
+                          └───────────────────────────────┘
+                                         ▲
+                                         │ leitura periódica
+                          ┌───────────────────────────────┐
+                          │           MONITOR              │
+                          │ - lê SHM a cada 1s             │
+                          │ - imprime estatísticas         │
+                          └───────────────────────────────┘
 
+## 📂 3. Estrutura do Repositório
 
-✔ O que cada módulo faz:
-Componente	Função
-generator	Gera jobs e envia ao Manager via PIPE
-manager	Recebe jobs, controla fila, cria workers
-workers	Threads que processam tarefas concorrentes
-monitor	Processo externo que lê o estado pela SHM
+projeto-final-concorrencia-ipc/
+│
+├── src/
+│   ├── generator.c
+│   ├── manager.c
+│   ├── monitor.c
+│   ├── common.h
+│   ├── ipc.h
+│
+├── build/
+├── .gitignore
+├── Makefile
+└── README.md
 
-🚀 3. Como Executar o Projeto
-1️⃣ Compilar todos os módulos
+## ⚙️ 4. Como compilar
+
 make clean
 make
 
-
-Isso gera:
+Executáveis gerados em:
 
 build/generator
 build/manager
 build/monitor
 
-2️⃣ Abrir dois terminais
-Terminal 1 → Rodar Manager
+## 🚀 5. Como Executar
 
-O Manager automaticamente inicia as threads e recebe jobs do Generator:
-
+🟦 Terminal 1 — Rodar Manager
 make run-manager
 
-Terminal 2 → Rodar Monitor
-
-Mostra estatísticas de processamento em tempo real:
-
+🟩 Terminal 2 — Rodar Monitor
 make run-monitor
 
-📦 4. Estrutura do Repositório
-projeto-final-concorrencia-ipc/
-│
-├── src/
-│   ├── generator.c     # Processo produtor
-│   ├── manager.c       # Processo gerente
-│   ├── monitor.c       # Processo monitor via SHM
-│   ├── ipc.h           # Constantes e interface
-│   └── common.h        # Estruturas compartilhadas
-│
-├── build/              # Arquivos compilados
-│
-├── Makefile            # Build profissional
-└── README.md           # ESTE ARQUIVO
+O processo Generator é iniciado automaticamente pelo Manager.
 
-🔧 5. Tecnologias e Mecanismos Utilizados
+## 🔧 6. Tecnologias e Conceitos Aplicados
 ✔ Processos POSIX
 
-fork(), execve()
+fork(), wait(), exec()
 
-wait() para sincronização entre pai/filho
+Comunicação via FIFO
 
 ✔ Threads POSIX
 
-pthread_create()
+pthread_create
 
-pthread_join()
+pthread_join
 
-pthread_mutex_t
+Semáforos e mutex para sincronização
 
-✔ IPC — Comunicação Entre Processos
-Tecnologia	Onde usamos
-PIPE nomeado (FIFO)	Comunicação Generator → Manager
-Memória Compartilhada POSIX (shm_open + mmap)	Monitor lê estatísticas em tempo real
-Sinais POSIX (SIGINT)	Finalização limpa dos processos
-✔ Sincronização
+✔ IPC
+| Mecanismo | Uso                        |
+| --------- | -------------------------- |
+| FIFO      | Generator → Manager        |
+| SHM       | Manager/Workers → Monitor  |
+| Mutex     | Proteção de escrita na SHM |
 
-Semáforo controla tamanho da fila de jobs
 
-Mutex protege a memória compartilhada
-
-Mutex + condition variables gerenciam workers no Manager
-
-📊 6. Funcionamento do Sistema
-
-O Manager cria FIFO e aguarda jobs.
-
-O Generator começa a escrever jobs no FIFO.
-
-O Manager distribui esses jobs para as threads.
-
-Ao final de cada job:
-
-Workers atualizam a SHM com mutex.
-
-O Monitor lê a SHM e imprime:
-
-[MONITOR] total_criados=20 | em_fila=0 | em_proc=0 | concluídos=20
-
-🧪 7. Demonstração (Exemplo de Execução)
-Terminal 1 (Manager + Workers)
-[GENERATOR] Criando job 12
-[MANAGER] Recebeu job 12
-[WORKER 2] Processando job 12
-[WORKER 2] Finalizou job 12
-...
-
-Terminal 2 (Monitor)
-[MONITOR] total_criados=20 | em_fila=0 | em_proc=1 | concluídos=19
-[MONITOR] total_criados=20 | em_fila=0 | em_proc=0 | concluídos=20
-
-📝 8. Pontos Fortes do Projeto
-
-Este projeto demonstra claramente:
-
-✔ Processos se comunicando via FIFO
-
-✔ Threads executando tarefas concorrentes
-
-✔ Controle rigoroso via mutex + semáforos
-
-✔ Memória compartilhada como canal de monitoramento
-
-✔ Arquitetura modular e escalável
-
-✔ Código organizado e padrão profissional
-
-✔ Makefile limpo e reprodutível
-
-🎓 9. Conclusão
-
-Este projeto integra os principais pilares da Programação Concorrente e IPC, simulando um sistema real de processamento distribuído.
-A solução implementa:
-
-Comunicação robusta entre processos
-
-Múltiplos workers concorrentes
-
-Sincronização eficiente
-
-Monitoramento externo em tempo real
-
-Arquitetura escalável e modular
-
-O conjunto demonstra domínio completo dos conteúdos da disciplina e segue padrões profissionais de desenvolvimento.
+## 📈 7. Estrutura da Memória Compartilhada
+typedef struct {
+    int total_criados;
+    int em_fila;
+    int em_exec;
+    int concluidos;
+} shm_status_t;
