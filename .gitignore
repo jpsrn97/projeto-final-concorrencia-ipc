@@ -1,0 +1,9 @@
+#build artifacts
+build/
+*.o
+#executáveis
+a.out
+# editor / sistema
+.vscode/
+*.swp
+.DS_Store
