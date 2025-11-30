@@ -1,78 +1,182 @@
-# Projeto Final – Programação Concorrente e IPC
+Título do Projeto: Sistema Completo de Processamento Concorrente com IPC em Linux
+Disciplina: Programação Concorrente e Sistemas Operacionais
+Professor: Fabio de Sousa Cardoso – UEA
+Alunos: João Paulo Santa Rita Neves 
+        Warley Matheus Nogueira
 
-Disciplina: **Sistemas Operacionais Embarcados e em Tempo Real**  
-Tema: **Simulador de Fila de Processamento de Jobs com Concorrência e IPC**
+📌 1. Objetivo do Projeto
 
-## 🎯 Objetivo
+Este projeto demonstra uma aplicação completa que utiliza todos os principais conceitos de concorrência e IPC (Inter-Process Communication) estudados na disciplina:
 
-Implementar uma aplicação que demonstra, na prática:
+Processos (fork, exec, wait)
 
-- Programação concorrente com **threads POSIX**;
-- Criação e gerenciamento de **processos**;
-- Uso de **mecanismos de sincronização** (mutex, condition variable, semáforo);
-- Comunicação entre processos (**IPC**) usando:
-  - **Pipe anônimo** (pai ↔ filho gerador);
-  - **Memória compartilhada POSIX** (`shm_open`, `mmap`).
+Threads POSIX (pthread)
 
-## 🧩 Arquitetura Geral
+IPC: PIPE nomeado (FIFO), memória compartilhada POSIX, sinais
 
-A aplicação é dividida em dois executáveis:
+Sincronização: mutexes, semáforos binários
 
-### 1. `manager` (processo gerente)
+Arquitetura Produtor → Gerente → Trabalhadores → Monitor
 
-- Cria um **processo filho gerador de jobs** usando `fork()`;
-- O gerador envia jobs para o manager através de um **pipe**;
-- O manager mantém uma **fila limitada de jobs** em memória;
-- Cria um pool de **threads worker** (`pthread_create`) que:
-  - Retiram jobs da fila (modelo produtor–consumidor);
-  - Processam jobs em paralelo;
-- Utiliza:
-  - **Mutex + Condition Variable** (`pthread_mutex_t`, `pthread_cond_t`)  
-    para proteger a fila e coordenar produtores/consumidores;
-  - **Semáforo POSIX** (`sem_t`, `sem_init`, `sem_wait`, `sem_post`)  
-    para limitar quantos jobs podem estar em processamento simultaneamente;
-  - **Memória compartilhada POSIX** (`shm_open`, `ftruncate`, `mmap`)  
-    para expor estatísticas globais de execução.
+Projeto funcional, executável e modular
 
-### 2. `monitor` (processo monitor)
+O sistema simula um pipeline real de processamento de “jobs” com múltiplas entidades concorrentes e comunicação interprocessual.
 
-- Conecta-se à mesma **memória compartilhada POSIX** criada pelo `manager`;
-- Lê periodicamente a struct `job_stats_t`;
-- Exibe em tempo (quase) real:
-  - Total de jobs criados;
-  - Jobs em fila;
-  - Jobs em processamento;
-  - Jobs concluídos.
+🏗️ 2. Arquitetura do Sistema
+                        ┌────────────────────────────────┐
+                        │          PROCESSO MANAGER       │
+                        │  - Recebe jobs do gerador       │
+                        │  - Distribui para workers       │
+                        └───────────────┬─────────────────┘
+                                        │ PIPE
+                                        ▼
+      ┌─────────────────┐         ┌───────────────┐
+      │ PROCESSO        │  FIFO   │ THREAD WORKER │ x N
+      │  GERADOR        │─────────► (pthread)     │
+      │  (produtor)     │         │ - executa job │
+      └─────────────────┘         └──────┬────────┘
+                                         │ Mutex + ...
+                                         │
+                                         ▼
+                            Memória Compartilhada (SHM)
+                            total_criados | em_fila | em_execução |
+                            total_concluídos
 
-## 🛠️ Conceitos Usados (Resumo Técnico)
 
-- **Processos**
-  - `fork`, `waitpid`, `_exit`
-- **Threads POSIX**
-  - `pthread_create`, `pthread_join`
-- **Sincronização**
-  - `pthread_mutex_t`, `pthread_cond_t`
-  - `sem_t` (semáforo POSIX)
-- **Comunicação entre processos (IPC)**
-  - Pipe anônimo: `pipe`, `read`, `write`
-  - Memória compartilhada POSIX: `shm_open`, `ftruncate`, `mmap`
-- **Padrão clássico**
-  - Modelo **Produtor–Consumidor** com fila limitada
+✔ O que cada módulo faz:
+Componente	Função
+generator	Gera jobs e envia ao Manager via PIPE
+manager	Recebe jobs, controla fila, cria workers
+workers	Threads que processam tarefas concorrentes
+monitor	Processo externo que lê o estado pela SHM
 
-## 📦 Estrutura de Pastas
+🚀 3. Como Executar o Projeto
+1️⃣ Compilar todos os módulos
+make clean
+make
 
-```text
+
+Isso gera:
+
+build/generator
+build/manager
+build/monitor
+
+2️⃣ Abrir dois terminais
+Terminal 1 → Rodar Manager
+
+O Manager automaticamente inicia as threads e recebe jobs do Generator:
+
+make run-manager
+
+Terminal 2 → Rodar Monitor
+
+Mostra estatísticas de processamento em tempo real:
+
+make run-monitor
+
+📦 4. Estrutura do Repositório
 projeto-final-concorrencia-ipc/
- ├── src/
- │   ├── manager.c   # processo gerente + threads + fila + pipe + shm
- │   └── monitor.c   # processo monitor, lê estatísticas via shm
- ├── include/
- │   └── common.h    # tipos compartilhados e configurações
- ├── docs/           # (slides e material da apresentação)
- ├── build/          # binários gerados pelo Makefile
- ├
-  Makefile
- ├── 
- README.md
- └── 
- .gitignore
+│
+├── src/
+│   ├── generator.c     # Processo produtor
+│   ├── manager.c       # Processo gerente
+│   ├── monitor.c       # Processo monitor via SHM
+│   ├── ipc.h           # Constantes e interface
+│   └── common.h        # Estruturas compartilhadas
+│
+├── build/              # Arquivos compilados
+│
+├── Makefile            # Build profissional
+└── README.md           # ESTE ARQUIVO
+
+🔧 5. Tecnologias e Mecanismos Utilizados
+✔ Processos POSIX
+
+fork(), execve()
+
+wait() para sincronização entre pai/filho
+
+✔ Threads POSIX
+
+pthread_create()
+
+pthread_join()
+
+pthread_mutex_t
+
+✔ IPC — Comunicação Entre Processos
+Tecnologia	Onde usamos
+PIPE nomeado (FIFO)	Comunicação Generator → Manager
+Memória Compartilhada POSIX (shm_open + mmap)	Monitor lê estatísticas em tempo real
+Sinais POSIX (SIGINT)	Finalização limpa dos processos
+✔ Sincronização
+
+Semáforo controla tamanho da fila de jobs
+
+Mutex protege a memória compartilhada
+
+Mutex + condition variables gerenciam workers no Manager
+
+📊 6. Funcionamento do Sistema
+
+O Manager cria FIFO e aguarda jobs.
+
+O Generator começa a escrever jobs no FIFO.
+
+O Manager distribui esses jobs para as threads.
+
+Ao final de cada job:
+
+Workers atualizam a SHM com mutex.
+
+O Monitor lê a SHM e imprime:
+
+[MONITOR] total_criados=20 | em_fila=0 | em_proc=0 | concluídos=20
+
+🧪 7. Demonstração (Exemplo de Execução)
+Terminal 1 (Manager + Workers)
+[GENERATOR] Criando job 12
+[MANAGER] Recebeu job 12
+[WORKER 2] Processando job 12
+[WORKER 2] Finalizou job 12
+...
+
+Terminal 2 (Monitor)
+[MONITOR] total_criados=20 | em_fila=0 | em_proc=1 | concluídos=19
+[MONITOR] total_criados=20 | em_fila=0 | em_proc=0 | concluídos=20
+
+📝 8. Pontos Fortes do Projeto
+
+Este projeto demonstra claramente:
+
+✔ Processos se comunicando via FIFO
+
+✔ Threads executando tarefas concorrentes
+
+✔ Controle rigoroso via mutex + semáforos
+
+✔ Memória compartilhada como canal de monitoramento
+
+✔ Arquitetura modular e escalável
+
+✔ Código organizado e padrão profissional
+
+✔ Makefile limpo e reprodutível
+
+🎓 9. Conclusão
+
+Este projeto integra os principais pilares da Programação Concorrente e IPC, simulando um sistema real de processamento distribuído.
+A solução implementa:
+
+Comunicação robusta entre processos
+
+Múltiplos workers concorrentes
+
+Sincronização eficiente
+
+Monitoramento externo em tempo real
+
+Arquitetura escalável e modular
+
+O conjunto demonstra domínio completo dos conteúdos da disciplina e segue padrões profissionais de desenvolvimento.
