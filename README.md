@@ -56,6 +56,7 @@ O sistema simula um pipeline real de processamento de *jobs*, com múltiplas ent
                           │ - lê SHM a cada 1s             │
                           │ - imprime estatísticas         │
                           └───────────────────────────────┘
+---
 
 ## 📂 3. Estrutura do Repositório
 
@@ -72,6 +73,7 @@ projeto-final-concorrencia-ipc/
 ├── .gitignore
 ├── Makefile
 └── README.md
+---
 
 ## ⚙️ 4. Como compilar
 
@@ -83,6 +85,7 @@ Executáveis gerados em:
 build/generator
 build/manager
 build/monitor
+---
 
 ## 🚀 5. Como Executar
 
@@ -93,6 +96,7 @@ make run-manager
 make run-monitor
 
 O processo Generator é iniciado automaticamente pelo Manager.
+---
 
 ## 🔧 6. Tecnologias e Conceitos Aplicados
 ✔ Processos POSIX
@@ -115,7 +119,7 @@ Semáforos e mutex para sincronização
 | FIFO      | Generator → Manager        |
 | SHM       | Manager/Workers → Monitor  |
 | Mutex     | Proteção de escrita na SHM |
-
+---
 
 ## 📈 7. Estrutura da Memória Compartilhada
 typedef struct {
